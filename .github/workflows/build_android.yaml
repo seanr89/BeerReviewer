@@ -36,4 +36,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
-        path: src/build/app/outputs/flutter-apk/beer-release.apk
+        path: src/build/app/outputs/flutter-apk/app-release.apk
