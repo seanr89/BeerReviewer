@@ -1,4 +1,6 @@
 import 'dart:convert';
+
+import 'package:anygood/app_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,6 +29,16 @@ class _BeerListPageState extends State<BeerListPage> {
   List<dynamic> _beers = [];
   List<dynamic> _filteredBeers = [];
   final TextEditingController _searchController = TextEditingController();
+  bool _hideReviewed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    readJson();
+    _searchController.addListener(() {
+      _applyFilters();
+    });
+  }
 
   Future<void> readJson() async {
     final String response = await rootBundle.loadString('assets/beers.json');
@@ -38,16 +50,24 @@ class _BeerListPageState extends State<BeerListPage> {
         beer['comment'] = prefs.getString('${beer['name']}_comment') ?? '';
         return beer;
       }).toList();
-      _filteredBeers = _beers;
+      _applyFilters();
     });
   }
 
-  void _filterBeers(String query) {
-    final filtered = _beers.where((beer) {
-      final beerName = beer['name'].toLowerCase();
-      final searchQuery = query.toLowerCase();
-      return beerName.contains(searchQuery);
-    }).toList();
+  void _applyFilters() {
+    List<dynamic> filtered = _beers;
+
+    if (_searchController.text.isNotEmpty) {
+      filtered = filtered.where((beer) {
+        final beerName = beer['name'].toLowerCase();
+        final searchQuery = _searchController.text.toLowerCase();
+        return beerName.contains(searchQuery);
+      }).toList();
+    }
+
+    if (_hideReviewed) {
+      filtered = filtered.where((beer) => beer['rating'] == 0).toList();
+    }
 
     setState(() {
       _filteredBeers = filtered;
@@ -119,15 +139,6 @@ class _BeerListPageState extends State<BeerListPage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    readJson();
-    _searchController.addListener(() {
-      _filterBeers(_searchController.text);
-    });
-  }
-
-  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
@@ -137,17 +148,35 @@ class _BeerListPageState extends State<BeerListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Any Good?')),
+      drawer: const AppDrawer(),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
               controller: _searchController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Search by beer name',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    _applyFilters();
+                  },
+                ),
               ),
             ),
+          ),
+          SwitchListTile(
+            title: const Text('Hide reviewed beers'),
+            value: _hideReviewed,
+            onChanged: (value) {
+              setState(() {
+                _hideReviewed = value;
+                _applyFilters();
+              });
+            },
           ),
           Expanded(
             child: ListView.builder(
@@ -170,7 +199,8 @@ class _BeerListPageState extends State<BeerListPage> {
                               (index) => const Icon(Icons.star, size: 16),
                             ),
                           ),
-                        if (beer['comment'] != null && beer['comment'].isNotEmpty)
+                        if (beer['comment'] != null &&
+                            beer['comment'].isNotEmpty)
                           Text('Comment: ${beer['comment']}'),
                       ],
                     ),
