@@ -184,6 +184,18 @@ class _BeerListPageState extends State<BeerListPage> {
               itemBuilder: (context, index) {
                 final beer = _filteredBeers[index];
                 return Card(
+                  color: () {
+                    final rating = beer['rating'] ?? 0;
+                    if (rating == 0) {
+                      return Colors.grey[200];
+                    } else if (rating <= 2) {
+                      return Colors.red[100];
+                    } else if (rating == 3) {
+                      return Colors.yellow[100];
+                    } else {
+                      return Colors.green[100];
+                    }
+                  }(),
                   child: ListTile(
                     title: Text(beer['name']),
                     subtitle: Column(
